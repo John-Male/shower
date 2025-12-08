@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>135-Degree Shower Arrangement Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .shower-viewer {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #333;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        }
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background-color: #2196F3;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #1976D2;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+        .arrangement-display {
+            font-weight: bold;
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Shower Arrangement Viewer</h1>
+        
+        <div class="arrangement-display" id="arrangementDisplay">
+            Current Arrangement: Standard U-Shape
+        </div>
+        
+        <svg class="shower-viewer" id="showerSvg" viewBox="0 0 400 300">
+            <!-- Shower base -->
+            <polygon id="showerBase" points="50,250 350,200 300,50 100,100" 
+                     fill="#e8f4f8" stroke="#333" stroke-width="2"/>
+            
+            <!-- Panels will be drawn here -->
+            <g id="panelGroup"></g>
+            
+            <!-- Coordinate system reference -->
+            <text x="10" y="20" fill="#666" font-size="12">3D Isometric View</text>
+        </svg>
+        
+        <div class="controls">
+            <button onclick="setArrangement('straight')">Straight Wall</button>
+            <button onclick="setArrangement('u-shape')">U-Shape (90°)</button>
+            <button onclick="setArrangement('135-degree')">135° Angled</button>
+            <button onclick="toggleDoor()">Toggle Door</button>
+        </div>
+        
+        <div class="info">
+            <h3>135-Degree Arrangement Features:</h3>
+            <ul>
+                <li>Angled corner panels create 135° interior angles</li>
+                <li>Smoother beveled corners instead of sharp 90° angles</li>
+                <li>More spacious feel with angled positioning</li>
+                <li>Dynamic panel positioning based on arrangement type</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let currentArrangement = 'u-shape';
+        let doorOpen = false;
+        
+        // Isometric projection function
+        function iso3D(x, y, z) {
+            const isoX = (x - z) * Math.cos(Math.PI / 6);
+            const isoY = (x + z) * Math.sin(Math.PI / 6) - y;
+            return [200 + isoX * 2, 150 + isoY * 2];
+        }
+        
+        function setArrangement(arrangement) {
+            currentArrangement = arrangement;
+            document.getElementById('arrangementDisplay').textContent = 
+                `Current Arrangement: ${arrangement === '135-degree' ? '135° Angled' : 
+                arrangement === 'u-shape' ? 'U-Shape (90°)' : 'Straight Wall'}`;
+            drawShower();
+        }
+        
+        function toggleDoor() {
+            doorOpen = !doorOpen;
+            drawShower();
+        }
+        
+        function drawPanel(points, fill = '#90CAF9', stroke = '#1976D2') {
+            const panelGroup = document.getElementById('panelGroup');
+            const panel = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            panel.setAttribute('points', points.map(p => `${p[0]},${p[1]}`).join(' '));
+            panel.setAttribute('fill', fill);
+            panel.setAttribute('stroke', stroke);
+            panel.setAttribute('stroke-width', '2');
+            panel.setAttribute('opacity', '0.8');
+            panelGroup.appendChild(panel);
+        }
+        
+        function getPanelCoordinates(wall, panelIndex, totalPanels) {
+            const is135Degree = currentArrangement === '135-degree';
+            
+            switch (wall) {
+                case 'front':
+                    const frontStartX = -75 + (panelIndex * (150 / Math.max(totalPanels, 1)));
+                    const frontEndX = frontStartX + (150 / Math.max(totalPanels, 1));
+                    return [
+                        iso3D(frontStartX, -10, -50), iso3D(frontEndX, -10, -50),
+                        iso3D(frontEndX, -10, 50), iso3D(frontStartX, -10, 50)
+                    ];
+                
+                case 'left':
+                    if (is135Degree) {
+                        // For 135-degree arrangement, angle the left wall inward
+                        const leftStartY = -10 + (panelIndex * (60 / Math.max(totalPanels, 1)));
+                        const leftEndY = leftStartY + (60 / Math.max(totalPanels, 1));
+                        const angleOffset = 25; // Create angled positioning
+                        return [
+                            iso3D(-50, leftStartY - angleOffset, 50), iso3D(-50, leftEndY - angleOffset, 50),
+                            iso3D(-50, leftEndY - angleOffset, -50), iso3D(-50, leftStartY - angleOffset, -50)
+                        ];
+                    } else {
+                        const leftStartY = -10 + (panelIndex * (90 / Math.max(totalPanels, 1)));
+                        const leftEndY = leftStartY + (90 / Math.max(totalPanels, 1));
+                        return [
+                            iso3D(-75, leftStartY, 50), iso3D(-75, leftEndY, 50),
+                            iso3D(-75, leftEndY, -50), iso3D(-75, leftStartY, -50)
+                        ];
+                    }
+                
+                case 'right':
+                    if (is135Degree) {
+                        // For 135-degree arrangement, angle the right wall inward
+                        const rightStartY = -10 + (panelIndex * (60 / Math.max(totalPanels, 1)));
+                        const rightEndY = rightStartY + (60 / Math.max(totalPanels, 1));
+                        const angleOffset = 25; // Create angled positioning
+                        return [
+                            iso3D(50, rightStartY - angleOffset, -50), iso3D(50, rightEndY - angleOffset, -50),
+                            iso3D(50, rightEndY - angleOffset, 50), iso3D(50, rightStartY - angleOffset, 50)
+                        ];
+                    } else {
+                        const rightStartY = -10 + (panelIndex * (90 / Math.max(totalPanels, 1)));
+                        const rightEndY = rightStartY + (90 / Math.max(totalPanels, 1));
+                        return [
+                            iso3D(75, rightStartY, -50), iso3D(75, rightEndY, -50),
+                            iso3D(75, rightEndY, 50), iso3D(75, rightStartY, 50)
+                        ];
+                    }
+                
+                case 'back':
+                    if (is135Degree) {
+                        // For 135-degree arrangement, adjust back wall positioning
+                        const backStartX = -50 + (panelIndex * (100 / Math.max(totalPanels, 1)));
+                        const backEndX = backStartX + (100 / Math.max(totalPanels, 1));
+                        return [
+                            iso3D(backStartX, 55, 50), iso3D(backEndX, 55, 50),
+                            iso3D(backEndX, 55, -50), iso3D(backStartX, 55, -50)
+                        ];
+                    } else {
+                        const backStartX = -75 + (panelIndex * (150 / Math.max(totalPanels, 1)));
+                        const backEndX = backStartX + (150 / Math.max(totalPanels, 1));
+                        return [
+                            iso3D(backStartX, 80, 50), iso3D(backEndX, 80, 50),
+                            iso3D(backEndX, 80, -50), iso3D(backStartX, 80, -50)
+                        ];
+                    }
+                
+                default:
+                    return [];
+            }
+        }
+        
+        function drawShower() {
+            // Clear previous panels
+            const panelGroup = document.getElementById('panelGroup');
+            panelGroup.innerHTML = '';
+            
+            // Define shower configuration based on arrangement
+            let config;
+            switch (currentArrangement) {
+                case 'straight':
+                    config = {
+                        front: ['Panel', doorOpen ? 'Door L' : 'Panel', 'Panel']
+                    };
+                    break;
+                case 'u-shape':
+                    config = {
+                        front: ['Panel', doorOpen ? 'Door L' : 'Panel', 'Panel'],
+                        left: ['Panel', 'Panel'],
+                        right: ['Panel', 'Panel']
+                    };
+                    break;
+                case '135-degree':
+                    config = {
+                        front: ['Panel', doorOpen ? 'Door L' : 'Panel', 'Panel'],
+                        left: ['Panel', 'Panel'],
+                        right: ['Panel', 'Panel'],
+                        back: ['Panel']
+                    };
+                    break;
+                default:
+                    config = { front: ['Panel', 'Panel', 'Panel'] };
+            }
+            
+            // Draw panels for each wall
+            Object.keys(config).forEach(wall => {
+                const panels = config[wall];
+                panels.forEach((panel, index) => {
+                    const coordinates = getPanelCoordinates(wall, index, panels.length);
+                    if (coordinates.length > 0) {
+                        const isDoor = panel.startsWith('Door');
+                        const fillColor = isDoor ? '#FFF3E0' : '#90CAF9';
+                        const strokeColor = isDoor ? '#FF9800' : '#1976D2';
+                        drawPanel(coordinates, fillColor, strokeColor);
+                    }
+                });
+            });
+        }
+        
+        // Initialize the shower display
+        drawShower();
+    </script>
+</body>
+</html>

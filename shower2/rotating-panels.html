@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rotating Panels - 3D Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom": "https://esm.sh/react-dom@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "three": "https://esm.sh/three@0.160.0",
+        "@react-three/fiber": "https://esm.sh/@react-three/fiber@8.15.0",
+        "@react-three/drei": "https://esm.sh/@react-three/drei@9.92.0"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import React, { useState, useRef } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { Canvas, useFrame } from '@react-three/fiber';
+    import { OrbitControls, Text } from '@react-three/drei';
+    import * as THREE from 'three';
+
+    // Individual Panel Component
+    function Panel({ position, label, rotationAxis = 'y', panelIndex = 0, isSelected, onSelect, rotationAngle }) {
+      const meshRef = useRef();
+
+      useFrame(() => {
+        if (meshRef.current) {
+          // Apply rotation
+          if (rotationAxis === 'y') {
+            meshRef.current.rotation.y = rotationAngle;
+          } else if (rotationAxis === 'z') {
+            meshRef.current.rotation.z = rotationAngle;
+          }
+        }
+      });
+
+      // Handle panel selection
+      const handleClick = () => {
+        onSelect(label);
+      };
+
+      return React.createElement('mesh', {
+        ref: meshRef,
+        position: position,
+        onClick: handleClick,
+        onPointerDown: handleClick,
+        castShadow: true,
+        receiveShadow: true
+      }, [
+        React.createElement('planeGeometry', { key: 'geom', args: [1.5, 9] }),
+        React.createElement('meshStandardMaterial', {
+          key: 'mat',
+          color: isSelected ? '#2ecc71' : (label.startsWith('C') ? '#3498db' : label.startsWith('R') ? '#e74c3c' : '#f39c12'),
+          roughness: 0.4,
+          metalness: 0.3,
+          emissive: isSelected ? '#2ecc71' : '#000000',
+          emissiveIntensity: isSelected ? 0.3 : 0,
+          side: THREE.DoubleSide
+        }),
+        React.createElement(Text, {
+          key: 'text',
+          position: [0, 0, 0.1],
+          fontSize: 0.4,
+          color: 'white'
+        }, label)
+      ]);
+    }
+
+    // Row of Panels Component
+    function PanelRow({ position, rowLabel, count = 3, rotationAxis = 'y', selectedPanel, onPanelSelect, panelRotations }) {
+      const panelSpacing = 2.5;
+
+      return React.createElement('group', { position: position },
+        Array.from({ length: count }).map((_, index) => {
+          const panelPos = [(index - 1) * panelSpacing, 0, 0];
+          const panelLabel = `${rowLabel}${index + 1}`;
+
+          return React.createElement(Panel, {
+            key: `${rowLabel}-${index}`,
+            position: panelPos,
+            label: panelLabel,
+            rotationAxis: rotationAxis,
+            panelIndex: index,
+            isSelected: selectedPanel === panelLabel,
+            onSelect: onPanelSelect,
+            rotationAngle: panelRotations[panelLabel] || 0
+          });
+        })
+      );
+    }
+
+    // Main App Component
+    function App() {
+      const [selectedPanel, setSelectedPanel] = useState('C1');
+      const [panelRotations, setPanelRotations] = useState({
+        C1: 0, C2: 0, C3: 0,
+        R1: 0, R2: 0, R3: 0,
+        L1: 0, L2: 0, L3: 0
+      });
+
+      const handlePanelSelect = (panelLabel) => {
+        setSelectedPanel(panelLabel);
+      };
+
+      const rotateSelectedPanel = (angle) => {
+        setPanelRotations(prev => {
+          const newRotation = (prev[selectedPanel] || 0) + angle;
+          console.log(`Rotating ${selectedPanel}: ${prev[selectedPanel]} -> ${newRotation} (${Math.round(newRotation * 180 / Math.PI)}°)`);
+          return {
+            ...prev,
+            [selectedPanel]: newRotation
+          };
+        });
+      };
+
+      const resetSelectedPanel = () => {
+        setPanelRotations(prev => ({
+          ...prev,
+          [selectedPanel]: 0
+        }));
+      };
+
+      const allPanels = ['C1', 'C2', 'C3', 'R1', 'R2', 'R3', 'L1', 'L2', 'L3'];
+
+      return React.createElement('div', { style: { width: '100%', height: '100vh' } }, [
+        React.createElement(Canvas, {
+          key: 'canvas',
+          camera: { position: [0, 0, 15], fov: 45 },
+          style: { background: '#1a1a2e' }
+        }, [
+          React.createElement('ambientLight', { key: 'ambient', intensity: 0.6 }),
+          React.createElement('directionalLight', {
+            key: 'directional',
+            position: [10, 10, 10],
+            intensity: 0.8,
+            castShadow: true
+          }),
+          React.createElement('pointLight', {
+            key: 'point',
+            position: [-10, 10, 5],
+            intensity: 0.5,
+            color: 'cyan'
+          }),
+          React.createElement(PanelRow, {
+            key: 'center',
+            position: [0, 0, 0],
+            rowLabel: 'C',
+            count: 3,
+            rotationAxis: 'y',
+            selectedPanel: selectedPanel,
+            onPanelSelect: handlePanelSelect,
+            panelRotations: panelRotations
+          }),
+          React.createElement(PanelRow, {
+            key: 'right',
+            position: [0, 4, 0],
+            rowLabel: 'R',
+            count: 3,
+            rotationAxis: 'y',
+            selectedPanel: selectedPanel,
+            onPanelSelect: handlePanelSelect,
+            panelRotations: panelRotations
+          }),
+          React.createElement(PanelRow, {
+            key: 'left',
+            position: [0, -4, 0],
+            rowLabel: 'L',
+            count: 3,
+            rotationAxis: 'y',
+            selectedPanel: selectedPanel,
+            onPanelSelect: handlePanelSelect,
+            panelRotations: panelRotations
+          }),
+          React.createElement(OrbitControls, { key: 'controls' })
+        ]),
+
+        // Instructions
+        React.createElement('div', {
+          key: 'instructions',
+          style: {
+            position: 'absolute',
+            top: '20px',
+            left: '20px',
+            color: 'white',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            padding: '15px',
+            borderRadius: '8px',
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            maxWidth: '300px'
+          }
+        }, [
+          React.createElement('h3', { key: 'h3', style: { margin: '0 0 10px 0' } }, 'Controls:'),
+          React.createElement('p', { key: 'p1' }, '• Click any panel to select it'),
+          React.createElement('p', { key: 'p2' }, '• Use buttons below to rotate selected panel'),
+          React.createElement('p', { key: 'p3' }, '• Drag to rotate camera view'),
+          React.createElement('p', { key: 'p4' }, '• Scroll to zoom in/out'),
+          React.createElement('p', {
+            key: 'p5',
+            style: { marginTop: '10px', fontSize: '12px', opacity: 0.8 }
+          }, 'C = Center row | R = Right row | L = Left row')
+        ]),
+
+        // Panel Selector and Rotation Controls
+        React.createElement('div', {
+          key: 'controls-panel',
+          style: {
+            position: 'absolute',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            color: 'white',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            padding: '20px',
+            borderRadius: '12px',
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            minWidth: '600px'
+          }
+        }, [
+          React.createElement('h3', {
+            key: 'title',
+            style: { margin: '0 0 15px 0', textAlign: 'center' }
+          }, [
+            'Selected: ',
+            React.createElement('span', {
+              key: 'selected',
+              style: { color: '#2ecc71', fontSize: '18px' }
+            }, selectedPanel)
+          ]),
+
+          // Panel Selector Grid
+          React.createElement('div', { key: 'selector', style: { marginBottom: '15px' } }, [
+            React.createElement('div', {
+              key: 'label',
+              style: { fontSize: '12px', marginBottom: '8px', opacity: 0.7 }
+            }, 'Select Panel:'),
+            React.createElement('div', {
+              key: 'buttons',
+              style: { display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }
+            }, allPanels.map(panel =>
+              React.createElement('button', {
+                key: panel,
+                onClick: () => setSelectedPanel(panel),
+                style: {
+                  padding: '8px 16px',
+                  backgroundColor: selectedPanel === panel ? '#2ecc71' : '#34495e',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  transition: 'all 0.2s'
+                }
+              }, panel)
+            ))
+          ]),
+
+          // Rotation Controls
+          React.createElement('div', { key: 'rotation' }, [
+            React.createElement('div', {
+              key: 'rot-label',
+              style: { fontSize: '12px', marginBottom: '8px', opacity: 0.7 }
+            }, 'Rotate Selected Panel:'),
+            React.createElement('div', {
+              key: 'rot-buttons',
+              style: { display: 'flex', gap: '10px', justifyContent: 'center' }
+            }, [
+              React.createElement('button', {
+                key: 'ccw',
+                onClick: () => rotateSelectedPanel(-Math.PI / 2),
+                style: {
+                  padding: '10px 20px',
+                  backgroundColor: '#e74c3c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                  fontWeight: 'bold',
+                  fontSize: '14px'
+                }
+              }, '← 90° CCW'),
+              React.createElement('button', {
+                key: 'cw',
+                onClick: () => rotateSelectedPanel(Math.PI / 2),
+                style: {
+                  padding: '10px 20px',
+                  backgroundColor: '#3498db',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                  fontWeight: 'bold',
+                  fontSize: '14px'
+                }
+              }, '90° CW →'),
+              React.createElement('button', {
+                key: 'reset',
+                onClick: resetSelectedPanel,
+                style: {
+                  padding: '10px 20px',
+                  backgroundColor: '#95a5a6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                  fontWeight: 'bold',
+                  fontSize: '14px'
+                }
+              }, 'Reset')
+            ]),
+            React.createElement('div', {
+              key: 'angle',
+              style: {
+                marginTop: '10px',
+                textAlign: 'center',
+                fontSize: '12px',
+                opacity: 0.7
+              }
+            }, `Current rotation: ${Math.round((panelRotations[selectedPanel] || 0) * 180 / Math.PI)}°`)
+          ])
+        ])
+      ]);
+    }
+
+    // Render the app
+    const root = createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>

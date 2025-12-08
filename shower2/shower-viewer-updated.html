@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shower 3D Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #root {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- React and ReactDOM from CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script type="text/babel">
+        const { useEffect, useRef, useState } = React;
+        
+        const ShowerViewer = () => {
+          const containerRef = useRef(null);
+          const sceneRef = useRef(null);
+          const rendererRef = useRef(null);
+          const cameraRef = useRef(null);
+          const showerGroupRef = useRef(null);
+          const [view2D, setView2D] = useState(true);
+          const [angle, setAngle] = useState(45);
+
+          useEffect(() => {
+            if (!containerRef.current) return;
+
+            // Scene setup
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+            sceneRef.current = scene;
+
+            // Renderer
+            const width = containerRef.current.clientWidth;
+            const height = containerRef.current.clientHeight;
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            containerRef.current.appendChild(renderer.domElement);
+            rendererRef.current = renderer;
+
+            // Camera
+            const camera = new THREE.OrthographicCamera(
+              -width / 100,
+              width / 100,
+              height / 100,
+              -height / 100,
+              0.1,
+              1000
+            );
+            camera.position.set(0, 0, 10);
+            cameraRef.current = camera;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(5, 10, 7);
+            scene.add(directionalLight);
+
+            // Create shower group
+            const showerGroup = new THREE.Group();
+            showerGroupRef.current = showerGroup;
+
+            // Base (floor) - now red!
+            const baseGeometry = new THREE.BoxGeometry(3, 0.2, 2);
+            const baseMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            const base = new THREE.Mesh(baseGeometry, baseMaterial);
+            base.position.y = -2;
+            showerGroup.add(base);
+
+            // Wall material for walls
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
+
+            // Left wall
+            const leftWallGeometry = new THREE.BoxGeometry(0.1, 3, 2);
+            const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+            leftWall.position.x = -1.5;
+            leftWall.position.z = 0;
+            showerGroup.add(leftWall);
+
+            // Right wall
+            const rightWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+            rightWall.position.x = 1.5;
+            rightWall.position.z = 0;
+            showerGroup.add(rightWall);
+
+            // Shower pole
+            const poleGeometry = new THREE.CylinderGeometry(0.08, 0.08, 2.2, 16);
+            const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 });
+            const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+            pole.position.set(-0.7, -0.2, 0.5);
+            showerGroup.add(pole);
+
+            // Shower head
+            const showerHeadGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+            const showerHeadMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.9 });
+            const showerHead = new THREE.Mesh(showerHeadGeometry, showerHeadMaterial);
+            showerHead.position.set(-0.7, 0.8, 0.5);
+            showerHead.scale.set(1, 0.6, 1);
+            showerGroup.add(showerHead);
+
+            // Shower holes (visual representation)
+            const holeMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            for (let i = 0; i < 4; i++) {
+              for (let j = 0; j < 3; j++) {
+                const holeGeometry = new THREE.SphereGeometry(0.03, 8, 8);
+                const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+                hole.position.set(-0.7 + (i - 1.5) * 0.12, 0.75 + (j - 1) * 0.1, 0.7);
+                showerGroup.add(hole);
+              }
+            }
+
+            // Showerhead holder arm
+            const armGeometry = new THREE.BoxGeometry(0.4, 0.06, 0.06);
+            const armMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8 });
+            const arm = new THREE.Mesh(armGeometry, armMaterial);
+            arm.position.set(-0.5, 0.8, 0.5);
+            arm.rotation.z = 0.3;
+            showerGroup.add(arm);
+
+            // Valve handles
+            for (let i = 0; i < 2; i++) {
+              const handleGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 16);
+              const handleMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.9 });
+              const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+              handle.position.set(0.3 + i * 0.6, -1.3, 0.8);
+              handle.rotation.x = Math.PI / 2;
+              showerGroup.add(handle);
+            }
+
+            // Curtain rod
+            const rodGeometry = new THREE.CylinderGeometry(0.08, 0.08, 3, 16);
+            const rodMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+            const rod = new THREE.Mesh(rodGeometry, rodMaterial);
+            rod.position.set(0, 0.9, -0.8);
+            rod.rotation.z = Math.PI / 2;
+            showerGroup.add(rod);
+
+            // Curtain
+            const curtainGeometry = new THREE.PlaneGeometry(3, 1.5);
+            const curtainMaterial = new THREE.MeshStandardMaterial({ 
+              color: 0x4da6ff, 
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.7
+            });
+            const curtain = new THREE.Mesh(curtainGeometry, curtainMaterial);
+            curtain.position.set(0, 0, 0.1);
+            showerGroup.add(curtain);
+
+            scene.add(showerGroup);
+
+            // Animation loop
+            const animate = () => {
+              requestAnimationFrame(animate);
+
+              // Update rotation based on angle
+              const radians = (angle * Math.PI) / 180;
+              showerGroup.rotation.y = radians;
+              showerGroup.rotation.x = view2D ? -0.3 : 0;
+
+              renderer.render(scene, camera);
+            };
+
+            animate();
+
+            // Handle window resize
+            const handleResize = () => {
+              const newWidth = containerRef.current.clientWidth;
+              const newHeight = containerRef.current.clientHeight;
+              
+              camera.left = -newWidth / 100;
+              camera.right = newWidth / 100;
+              camera.top = newHeight / 100;
+              camera.bottom = -newHeight / 100;
+              camera.updateProjectionMatrix();
+              
+              renderer.setSize(newWidth, newHeight);
+            };
+
+            window.addEventListener('resize', handleResize);
+
+            return () => {
+              window.removeEventListener('resize', handleResize);
+              if (containerRef.current && renderer.domElement) {
+                containerRef.current.removeChild(renderer.domElement);
+              }
+              renderer.dispose();
+            };
+          }, []);
+
+          // Update rotation when angle changes
+          useEffect(() => {
+            if (showerGroupRef.current) {
+              const radians = (angle * Math.PI) / 180;
+              showerGroupRef.current.rotation.y = radians;
+              showerGroupRef.current.rotation.x = view2D ? -0.3 : 0;
+            }
+          }, [angle, view2D]);
+
+          return (
+            <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ 
+                padding: '20px', 
+                backgroundColor: '#f5f5f5', 
+                borderBottom: '1px solid #ddd',
+                display: 'flex',
+                gap: '20px',
+                alignItems: 'center'
+              }}>
+                <h1 style={{ margin: 0, fontSize: '24px' }}>Shower 3D Viewer</h1>
+                
+                <div>
+                  <label style={{ marginRight: '10px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={view2D} 
+                      onChange={(e) => setView2D(e.target.checked)}
+                    />
+                    {' '}2D View (Orthographic)
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <label>Rotation: {angle}°</label>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="360" 
+                    value={angle}
+                    onChange={(e) => setAngle(Number(e.target.value))}
+                    style={{ width: '200px' }}
+                  />
+                </div>
+
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
+                  <button 
+                    onClick={() => setAngle(0)}
+                    style={{ padding: '8px 12px', cursor: 'pointer' }}
+                  >
+                    Front
+                  </button>
+                  <button 
+                    onClick={() => setAngle(90)}
+                    style={{ padding: '8px 12px', cursor: 'pointer' }}
+                  >
+                    Side
+                  </button>
+                  <button 
+                    onClick={() => setAngle(45)}
+                    style={{ padding: '8px 12px', cursor: 'pointer' }}
+                  >
+                    Isometric
+                  </button>
+                </div>
+              </div>
+
+              <div 
+                ref={containerRef} 
+                style={{ flex: 1, backgroundColor: '#ffffff' }}
+              />
+            </div>
+          );
+        };
+
+        // Render the component
+        ReactDOM.render(<ShowerViewer />, document.getElementById('root'));
+    </script>
+</body>
+</html>
