@@ -57,21 +57,40 @@ export const rotateZ = (point, angle) => {
 };
 
 /**
- * Calculates the 4 corners of a panel in 3D space
+ * Calculates the corners of a panel in 3D space based on its shape
  */
 export const getPanelCorners3D = (panel) => {
-  const { x, y, z = 0, width, height, rotationY = 0, rotationZ = 0 } = panel;
+  const { x, y, z = 0, width, height, rotationY = 0, rotationZ = 0, shape } = panel;
 
-  // Define corners in local space (centered at origin)
-  const halfWidth = width / 2;
-  const halfHeight = height / 2;
+  let corners;
 
-  let corners = [
-    { x: -halfWidth, y: -halfHeight, z: 0 }, // Top-left
-    { x: halfWidth, y: -halfHeight, z: 0 },  // Top-right
-    { x: halfWidth, y: halfHeight, z: 0 },   // Bottom-right
-    { x: -halfWidth, y: halfHeight, z: 0 },  // Bottom-left
-  ];
+  // If panel has a custom shape, use it to generate corners
+  if (shape && shape.type && shape.type !== 'normal') {
+    // Import the shape path generator
+    const { generatePanelShapePath } = require('./panelTypes');
+    const shapePath = generatePanelShapePath(shape);
+
+    // Convert shape path to corners in local space (centered at origin)
+    const halfWidth = shape.base_width / 2;
+    const halfHeight = shape.base_height / 2;
+
+    corners = shapePath.map(point => ({
+      x: point.x - halfWidth,
+      y: point.y - halfHeight,
+      z: 0,
+    }));
+  } else {
+    // Simple rectangle - use standard 4 corners
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    corners = [
+      { x: -halfWidth, y: -halfHeight, z: 0 }, // Top-left
+      { x: halfWidth, y: -halfHeight, z: 0 },  // Top-right
+      { x: halfWidth, y: halfHeight, z: 0 },   // Bottom-right
+      { x: -halfWidth, y: halfHeight, z: 0 },  // Bottom-left
+    ];
+  }
 
   // Apply rotations
   corners = corners.map(corner => {

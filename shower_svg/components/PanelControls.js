@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { PANEL_TYPES, PANEL_TYPE_LABELS, createDefaultPanelShape } from '../utils/panelTypes';
+import PanelShapePreview from './PanelShapePreview';
 
 const PanelControls = ({ panels, onPanelsChange }) => {
   const [selectedPanel, setSelectedPanel] = useState(null);
@@ -8,17 +10,39 @@ const PanelControls = ({ panels, onPanelsChange }) => {
     angle: '180',
     side: 'right',
   });
+  const [newPanelType, setNewPanelType] = useState(PANEL_TYPES.NORMAL);
 
   const addPanel = () => {
+    // Generate a new panel ID based on existing panels
+    const panelNumbers = panels.map(p => p.panelNumber || 0);
+    const newPanelNumber = Math.max(...panelNumbers, 0) + 1;
     const newPanel = {
-      id: Math.max(...panels.map(p => p.id), 0) + 1,
-      width: 40,
+      id: `panel_${newPanelNumber}`,
+      panelGroup: 'custom',
+      panelNumber: newPanelNumber,
+      width: 50,
       height: 100,
       x: 50,
       y: 50,
+      z: 0,
+      rotationY: 0,
+      leftPanel: null,
+      rightPanel: null,
+      shape: createDefaultPanelShape(newPanelType, 50, 100),
       connections: [],
     };
     onPanelsChange([...panels, newPanel]);
+  };
+
+  const changePanelType = (panelId, newType) => {
+    const panel = panels.find(p => p.id === panelId);
+    if (!panel) return;
+
+    const newShape = createDefaultPanelShape(newType, panel.width, panel.height);
+    const updatedPanels = panels.map(p =>
+      p.id === panelId ? { ...p, shape: newShape } : p
+    );
+    onPanelsChange(updatedPanels);
   };
 
   const removePanel = (panelId) => {
@@ -42,11 +66,11 @@ const PanelControls = ({ panels, onPanelsChange }) => {
   const addConnection = () => {
     if (!selectedPanel || newConnection.panelId === '') return;
 
-    const targetPanelId = parseInt(newConnection.panelId);
+    const targetPanelId = newConnection.panelId;
     const angle = parseInt(newConnection.angle);
 
     // Allow panelId 0 (no panel), otherwise validate that panel exists
-    if (targetPanelId !== 0 && !panels.find(p => p.id === targetPanelId)) return;
+    if (targetPanelId !== '0' && targetPanelId !== 0 && !panels.find(p => p.id === targetPanelId)) return;
 
     const updatedPanels = panels.map(p => {
       if (p.id === selectedPanel.id) {
@@ -55,7 +79,7 @@ const PanelControls = ({ panels, onPanelsChange }) => {
           connections: [
             ...p.connections,
             {
-              panelId: targetPanelId,
+              panelId: targetPanelId === '0' ? 0 : targetPanelId,
               angle: angle,
               side: newConnection.side,
             },
@@ -85,8 +109,39 @@ const PanelControls = ({ panels, onPanelsChange }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Add New Panel:</Text>
+        <Text style={styles.label}>Select Panel Shape:</Text>
+        <ScrollView horizontal style={styles.previewScrollView} showsHorizontalScrollIndicator={true}>
+          <View style={styles.previewContainer}>
+            {Object.entries(PANEL_TYPE_LABELS).map(([type, label]) => {
+              const previewShape = createDefaultPanelShape(type, 50, 100);
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.previewCard,
+                    newPanelType === type && styles.previewCardSelected,
+                  ]}
+                  onPress={() => setNewPanelType(type)}
+                >
+                  <PanelShapePreview
+                    shape={previewShape}
+                    size={70}
+                    color={newPanelType === type ? '#007AFF' : '#666'}
+                  />
+                  <Text style={[
+                    styles.previewLabel,
+                    newPanelType === type && styles.previewLabelSelected,
+                  ]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
         <TouchableOpacity style={styles.addButton} onPress={addPanel}>
-          <Text style={styles.addButtonText}>+ Add New Panel</Text>
+          <Text style={styles.addButtonText}>+ Add Panel</Text>
         </TouchableOpacity>
       </View>
 
@@ -102,7 +157,7 @@ const PanelControls = ({ panels, onPanelsChange }) => {
             onPress={() => setSelectedPanel(panel)}
           >
             <Text style={styles.panelItemText}>
-              Panel {panel.id} ({panel.width}x{panel.height})
+              {panel.id} {panel.panelGroup ? `[${panel.panelGroup}]` : ''} ({panel.width}x{panel.height})
             </Text>
             <TouchableOpacity
               style={styles.removeButton}
@@ -191,6 +246,78 @@ const PanelControls = ({ panels, onPanelsChange }) => {
             />
           </View>
 
+          <View style={styles.inputRow}>
+            <Text style={styles.label}>Panel Group:</Text>
+            <TextInput
+              style={styles.input}
+              value={String(selectedPanel.panelGroup || '')}
+              onChangeText={(text) =>
+                updatePanel(selectedPanel.id, { panelGroup: text })
+              }
+              placeholder="e.g., front1, left, right"
+            />
+          </View>
+
+          <View style={styles.inputRow}>
+            <Text style={styles.label}>Panel Shape Type:</Text>
+            <Text style={styles.currentTypeText}>
+              Current: {PANEL_TYPE_LABELS[selectedPanel.shape?.type] || 'Normal'}
+            </Text>
+            <ScrollView horizontal style={styles.typeScrollView} showsHorizontalScrollIndicator={true}>
+              <View style={styles.typeContainer}>
+                {Object.entries(PANEL_TYPE_LABELS).map(([type, label]) => {
+                  const previewShape = createDefaultPanelShape(type, 50, 100);
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.typeCard,
+                        selectedPanel.shape?.type === type && styles.typeCardSelected,
+                      ]}
+                      onPress={() => changePanelType(selectedPanel.id, type)}
+                    >
+                      <PanelShapePreview
+                        shape={previewShape}
+                        size={50}
+                        color={selectedPanel.shape?.type === type ? '#007AFF' : '#666'}
+                      />
+                      <Text style={[
+                        styles.typeLabel,
+                        selectedPanel.shape?.type === type && styles.typeLabelSelected,
+                      ]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+
+          <View style={styles.inputRow}>
+            <Text style={styles.label}>Left Panel (neighbor):</Text>
+            <TextInput
+              style={styles.input}
+              value={String(selectedPanel.leftPanel || '')}
+              onChangeText={(text) =>
+                updatePanel(selectedPanel.id, { leftPanel: text || null })
+              }
+              placeholder="e.g., front1_11 or leave empty"
+            />
+          </View>
+
+          <View style={styles.inputRow}>
+            <Text style={styles.label}>Right Panel (neighbor):</Text>
+            <TextInput
+              style={styles.input}
+              value={String(selectedPanel.rightPanel || '')}
+              onChangeText={(text) =>
+                updatePanel(selectedPanel.id, { rightPanel: text || null })
+              }
+              placeholder="e.g., right_2 or leave empty"
+            />
+          </View>
+
           <Text style={styles.subsectionTitle}>Connections:</Text>
           {selectedPanel.connections.map((conn, idx) => (
             <View key={idx} style={styles.connectionItem}>
@@ -215,8 +342,7 @@ const PanelControls = ({ panels, onPanelsChange }) => {
               onChangeText={(text) =>
                 setNewConnection({ ...newConnection, panelId: text })
               }
-              keyboardType="numeric"
-              placeholder="e.g., 2 or 0"
+              placeholder="e.g., front1_1 or 0"
             />
           </View>
 
@@ -383,6 +509,77 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  previewScrollView: {
+    marginBottom: 15,
+    maxHeight: 150,
+  },
+  previewContainer: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    gap: 12,
+  },
+  previewCard: {
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    marginRight: 10,
+    width: 100,
+  },
+  previewCardSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#e3f2fd',
+  },
+  previewLabel: {
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 6,
+    color: '#666',
+  },
+  previewLabelSelected: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  typeScrollView: {
+    marginTop: 8,
+    maxHeight: 120,
+  },
+  typeContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  typeCard: {
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    marginRight: 8,
+    width: 80,
+  },
+  typeCardSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#e3f2fd',
+  },
+  typeLabel: {
+    fontSize: 9,
+    textAlign: 'center',
+    marginTop: 4,
+    color: '#666',
+  },
+  typeLabelSelected: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  currentTypeText: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
 });
 

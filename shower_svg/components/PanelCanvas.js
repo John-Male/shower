@@ -127,8 +127,9 @@ const PanelCanvas = ({ panels, currentPanelId }) => {
             .join(' ');
 
           // Calculate center for label
-          const centerX = projectedPanel.corners.reduce((sum, c) => sum + c.x, 0) / 4;
-          const centerY = projectedPanel.corners.reduce((sum, c) => sum + c.y, 0) / 4;
+          const numCorners = projectedPanel.corners.length;
+          const centerX = projectedPanel.corners.reduce((sum, c) => sum + c.x, 0) / numCorners;
+          const centerY = projectedPanel.corners.reduce((sum, c) => sum + c.y, 0) / numCorners;
 
           return (
             <G key={panel.id}>

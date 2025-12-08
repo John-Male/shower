@@ -8,7 +8,7 @@ import { getRotatedShowerForPanel } from './utils/showerRotation';
 
 export default function App() {
   const [baseShower, setBaseShower] = useState(shower_1);
-  const [currentPanelId, setCurrentPanelId] = useState(1);
+  const [currentPanelId, setCurrentPanelId] = useState('front1_1');
   const [showControls, setShowControls] = useState(false);
 
   // Calculate rotated shower configuration based on current panel
@@ -21,17 +21,27 @@ export default function App() {
 
   const navigateLeft = () => {
     // Navigate to the panel on the user's LEFT (from their viewing perspective)
-    const rightConnection = currentPanel?.connections.find(c => c.side === 'right' && c.panelId !== 0);
-    if (rightConnection) {
-      setCurrentPanelId(rightConnection.panelId);
+    // First try using the rightPanel property (easier), fallback to connections
+    if (currentPanel?.rightPanel) {
+      setCurrentPanelId(currentPanel.rightPanel);
+    } else {
+      const rightConnection = currentPanel?.connections.find(c => c.side === 'right' && c.panelId !== 0);
+      if (rightConnection) {
+        setCurrentPanelId(rightConnection.panelId);
+      }
     }
   };
 
   const navigateRight = () => {
     // Navigate to the panel on the user's RIGHT (from their viewing perspective)
-    const leftConnection = currentPanel?.connections.find(c => c.side === 'left' && c.panelId !== 0);
-    if (leftConnection) {
-      setCurrentPanelId(leftConnection.panelId);
+    // First try using the leftPanel property (easier), fallback to connections
+    if (currentPanel?.leftPanel) {
+      setCurrentPanelId(currentPanel.leftPanel);
+    } else {
+      const leftConnection = currentPanel?.connections.find(c => c.side === 'left' && c.panelId !== 0);
+      if (leftConnection) {
+        setCurrentPanelId(leftConnection.panelId);
+      }
     }
   };
 
@@ -39,7 +49,12 @@ export default function App() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Panel {currentPanelId}</Text>
+          <View>
+            <Text style={styles.title}>{currentPanelId}</Text>
+            {currentPanel?.panelGroup && (
+              <Text style={styles.subtitle}>Group: {currentPanel.panelGroup}</Text>
+            )}
+          </View>
           <TouchableOpacity
             style={styles.button}
             onPress={() => setShowControls(!showControls)}
@@ -101,6 +116,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
   navButtons: {
     flexDirection: 'row',
