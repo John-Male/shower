@@ -7,7 +7,6 @@ export const PANEL_TYPES = {
   BOTH_SINGLE_STEP: 'both_single_step',
   LEFT_DOUBLE_STEP: 'left_double_step',
   RIGHT_DOUBLE_STEP: 'right_double_step',
-  BOTH_DOUBLE_STEP: 'both_double_step',
 };
 
 export const PANEL_TYPE_LABELS = {
@@ -17,7 +16,6 @@ export const PANEL_TYPE_LABELS = {
   [PANEL_TYPES.BOTH_SINGLE_STEP]: 'Both Single Step',
   [PANEL_TYPES.LEFT_DOUBLE_STEP]: 'Left Double Step',
   [PANEL_TYPES.RIGHT_DOUBLE_STEP]: 'Right Double Step',
-  [PANEL_TYPES.BOTH_DOUBLE_STEP]: 'Both Double Step',
 };
 
 /**
@@ -37,53 +35,38 @@ export function createDefaultPanelShape(type, baseWidth = 50, baseHeight = 100) 
       break;
 
     case PANEL_TYPES.LEFT_SINGLE_STEP:
-      shape.left_base_width = baseWidth * 0.2; // 20% of base width
-      shape.left_base_height = baseHeight * 0.15; // 15% of base height
+      shape.left_base_width = baseWidth * 0.3; // 20% of base width
+      shape.left_base_height = baseHeight * 0.3; // 15% of base height
       break;
 
     case PANEL_TYPES.RIGHT_SINGLE_STEP:
-      shape.right_base_width = baseWidth * 0.2;
-      shape.right_base_height = baseHeight * 0.15;
+      shape.right_base_width = baseWidth * 0.3;
+      shape.right_base_height = baseHeight * 0.3;
       break;
 
     case PANEL_TYPES.BOTH_SINGLE_STEP:
-      shape.left_base_width = baseWidth * 0.2;
-      shape.left_base_height = baseHeight * 0.15;
-      shape.right_base_width = baseWidth * 0.2;
-      shape.right_base_height = baseHeight * 0.15;
+      shape.left_base_width = baseWidth * 0.3;
+      shape.left_base_height = baseHeight * 0.3;
+      shape.right_base_width = baseWidth * 0.3;
+      shape.right_base_height = baseHeight * 0.3;
       break;
 
     case PANEL_TYPES.LEFT_DOUBLE_STEP:
       // First step (outer/lower)
-      shape.left_base_width = baseWidth * 0.2;
-      shape.left_base_height = baseHeight * 0.15;
-      // Second step (inner/higher)
-      shape.left_base_width_2 = baseWidth * 0.2;
-      shape.left_base_height_2 = baseHeight * 0.3;
+      shape.left_base_width = baseWidth * 0.3;
+      shape.left_base_height = baseHeight * 0.3;
+      // Second step (middle) - total width/height from edge
+      shape.left_base_width_2 = baseWidth * 0.6; // 0.3 + 0.3
+      shape.left_base_height_2 = baseHeight * 0.6; // 0.3 + 0.3
       break;
 
     case PANEL_TYPES.RIGHT_DOUBLE_STEP:
       // First step (outer/lower)
-      shape.right_base_width = baseWidth * 0.2;
-      shape.right_base_height = baseHeight * 0.15;
-      // Second step (inner/higher)
-      shape.right_base_width_2 = baseWidth * 0.2;
-      shape.right_base_height_2 = baseHeight * 0.3;
-      break;
-
-    case PANEL_TYPES.BOTH_DOUBLE_STEP:
-      // Left first step (outer/lower)
-      shape.left_base_width = baseWidth * 0.2;
-      shape.left_base_height = baseHeight * 0.15;
-      // Left second step (inner/higher)
-      shape.left_base_width_2 = baseWidth * 0.2;
-      shape.left_base_height_2 = baseHeight * 0.3;
-      // Right first step (outer/lower)
-      shape.right_base_width = baseWidth * 0.2;
-      shape.right_base_height = baseHeight * 0.15;
-      // Right second step (inner/higher)
-      shape.right_base_width_2 = baseWidth * 0.2;
-      shape.right_base_height_2 = baseHeight * 0.3;
+      shape.right_base_width = baseWidth * 0.3;
+      shape.right_base_height = baseHeight * 0.3;
+      // Second step (middle) - total width/height from edge
+      shape.right_base_width_2 = baseWidth * 0.6; // 0.3 + 0.3
+      shape.right_base_height_2 = baseHeight * 0.6; // 0.3 + 0.3
       break;
 
     default:
@@ -139,25 +122,34 @@ export function generatePanelShapePath(shape) {
 
   // Right edge - go down to where steps begin (if any)
   if (shape.right_base_width && shape.right_base_height) {
-    // Go down to first step cutout
-    const firstStepTop = baseHeight - shape.right_base_height;
-    points.push({ x: baseWidth, y: firstStepTop });
-
-    // Cut inward for first step
-    points.push({ x: baseWidth - shape.right_base_width, y: firstStepTop });
-
     if (shape.right_base_width_2 && shape.right_base_height_2) {
-      // Go down to second step
-      const secondStepTop = baseHeight - shape.right_base_height_2;
+      // Double step - create two distinct steps
+      const firstStepTop = baseHeight - shape.right_base_height_2;
+
+      // Go down to where first step begins
+      points.push({ x: baseWidth, y: firstStepTop });
+
+      // Cut inward for first step
+      points.push({ x: baseWidth - shape.right_base_width, y: firstStepTop });
+
+      // Go down the height of one step
+      const secondStepTop = baseHeight - (shape.right_base_height_2 - shape.right_base_height);
       points.push({ x: baseWidth - shape.right_base_width, y: secondStepTop });
 
       // Cut inward for second step
-      points.push({ x: baseWidth - shape.right_base_width - shape.right_base_width_2, y: secondStepTop });
+      points.push({ x: baseWidth - shape.right_base_width_2, y: secondStepTop });
 
       // Go down to bottom
-      points.push({ x: baseWidth - shape.right_base_width - shape.right_base_width_2, y: baseHeight });
+      points.push({ x: baseWidth - shape.right_base_width_2, y: baseHeight });
     } else {
-      // No second step, go straight down to bottom
+      // Single step
+      const firstStepTop = baseHeight - shape.right_base_height;
+      points.push({ x: baseWidth, y: firstStepTop });
+
+      // Cut inward for first step
+      points.push({ x: baseWidth - shape.right_base_width, y: firstStepTop });
+
+      // Go straight down to bottom
       points.push({ x: baseWidth - shape.right_base_width, y: baseHeight });
     }
   } else {
@@ -168,28 +160,37 @@ export function generatePanelShapePath(shape) {
   // Bottom edge - walk back across the bottom with left steps
   if (shape.left_base_width && shape.left_base_height) {
     if (shape.left_base_width_2 && shape.left_base_height_2) {
+      // Double step - create two distinct steps
+      const firstStepTop = baseHeight - shape.left_base_height_2;
+
       // At bottom, walk left to where second step starts
-      const secondStepLeft = shape.left_base_width + shape.left_base_width_2;
-      points.push({ x: secondStepLeft, y: baseHeight });
+      points.push({ x: shape.left_base_width_2, y: baseHeight });
 
       // Go up for second step
-      const secondStepTop = baseHeight - shape.left_base_height_2;
-      points.push({ x: secondStepLeft, y: secondStepTop });
+      const secondStepTop = baseHeight - (shape.left_base_height_2 - shape.left_base_height);
+      points.push({ x: shape.left_base_width_2, y: secondStepTop });
 
       // Walk left to first step
       points.push({ x: shape.left_base_width, y: secondStepTop });
-    }
 
-    // Go up for first step (or continue from second step)
-    const firstStepTop = baseHeight - shape.left_base_height;
-    if (!shape.left_base_width_2) {
-      // Coming from bottom, need to walk left first
+      // Go up for first step
+      points.push({ x: shape.left_base_width, y: firstStepTop });
+
+      // Walk left to edge
+      points.push({ x: 0, y: firstStepTop });
+    } else {
+      // Single step
+      const firstStepTop = baseHeight - shape.left_base_height;
+
+      // At bottom, walk left to where step starts
       points.push({ x: shape.left_base_width, y: baseHeight });
-    }
-    points.push({ x: shape.left_base_width, y: firstStepTop });
 
-    // Walk left to edge
-    points.push({ x: 0, y: firstStepTop });
+      // Go up for step
+      points.push({ x: shape.left_base_width, y: firstStepTop });
+
+      // Walk left to edge
+      points.push({ x: 0, y: firstStepTop });
+    }
   } else {
     // No left steps, walk straight across bottom
     points.push({ x: 0, y: baseHeight });
